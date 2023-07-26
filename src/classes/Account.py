@@ -1,17 +1,19 @@
-from .BaseStockFunction import BaseStockFunction
+from src.classes.BaseStockFunction import BaseStockFunction
+from src.utils import commas
+from src.exceptions import InsufficientBalance
 
 class Account(BaseStockFunction):
     def __init__(self, name, balance):
         self.name = name
         self.balance = balance
+        self.initial_balance = balance
         self.stocks = {}
         self.transaction_history = []
-
         # transaction_history 요소 예시 : {'date': 2023-07-22, 'stock_name':'삼성전자', 'price':1000, 'count':10}
 
     def show_account(self):
         print(f"이름: {self.name}")
-        print(f"잔고: {self.balance}원")
+        print(f"잔고: {commas(self.balance):.2f}원")
         print(f"보유 주식: {self.stocks}")
 
     def _record_transaction(self, date, stock_name, price, count):
@@ -31,14 +33,14 @@ class Account(BaseStockFunction):
             / self.stocks[stock_name]["count"]
         )
 
-    def get_earning_rate(self, stock_name: str, now_price: int) -> float:
-        """수익률 계산"""
+    def get_stock_earning_rate(self, stock_name: str, now_price: int) -> float:
+        """특정 주식의 수익률 계산"""
         average_purchase_price = self.get_avergae_purchase_price(stock_name)
         return self._calc_change_rate(average_purchase_price, now_price)
 
     def buy_stock(self, stock_name: str, price: int, count: int):
         if self.balance < price * count:
-            raise Exception("잔액이 부족합니다.")
+            raise InsufficientBalance("잔액이 부족합니다.")
         if stock_name not in self.stocks:
             self._initialize_stock(stock_name)
         buy_amount = price * count
@@ -71,6 +73,11 @@ class Account(BaseStockFunction):
         if stock_name not in self.stocks:
             raise Exception("해당 주식이 없습니다.")
         self.sell_stock(stock_name, price, self.stocks[stock_name]["count"])
+    
+    def sell_half_stock(self, stock_name, price):
+        if stock_name not in self.stocks:
+            raise Exception("해당 주식이 없습니다.")
+        self.sell_stock(stock_name, price, self.stocks[stock_name]["count"] // 2)
 
 
 if __name__ == "__main__":

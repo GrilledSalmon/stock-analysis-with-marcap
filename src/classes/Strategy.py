@@ -1,5 +1,7 @@
-from .BaseStockFunction import BaseStockFunction
-from .Account import Account
+from src.classes.BaseStockFunction import BaseStockFunction
+from src.classes.Account import Account
+from src.utils import commas, percent
+from src.exceptions import InsufficientBalance
 import pandas as pd
 
 
@@ -32,14 +34,14 @@ class Strategy(BaseStockFunction):
 
     def show_strategy(self):
         print(f"전략 이름: {self.name}")
-        print(f"전략 예산: {self.strategy_budget}")
-        print(f"일별 예산: {self.std_amount}")
-        print(f"분할 매수 횟수: {self.divide_number}")
-        print(f"매수 기준 상승률: {self.buy_percent}")
-        print(f"매도 기준 하락률: {self.sell_percent}")
-        print(f"전체 익절 상한 수익률: {self.profit_limit_percent}")
+        print(f"전략 예산: {commas(self.strategy_budget)}원")
+        print(f"일별 예산: {commas(self.std_amount)}원")
+        print(f"분할 매수 횟수: {self.divide_number}회")
+        print(f"매수 기준 하락룰: {percent(self.buy_percent)}")
+        print(f"매도 기준 상승률: {percent(self.sell_percent)}")
+        print(f"전체 익절 상한 수익률: {percent(self.profit_limit_percent)}")
         print(f"매매 대상 주식: {self.stock_name}")
-        print(f"매매 대상 주식 데이터: {self.target_df.head(3)}")
+        print(f"매매 대상 주식 데이터: \n{self.target_df.iloc[0]}")
 
     def _get_day_data(self, index: int):
         day_data = self.target_df.iloc[index]
@@ -91,13 +93,17 @@ class Strategy(BaseStockFunction):
         if min_change_rate <= self.sell_percent:
             buy_price = self._get_buy_price(prev_close)
             count = self._calc_stock_count(self.std_amount, buy_price)
-            self.account.buy_stock(self.stock_name, buy_price, count)
+            try:
+                self.account.buy_stock(self.stock_name, buy_price, count)
+            except InsufficientBalance:
+                print("잔액이 부족헤 종가에 반을 매도합니다.")
+                self.account.sell_half_stock(self.stock_name, close)
 
     def sell_strategy(self, index: int):
         prev_open, prev_close, prev_high, prev_low = self._get_prev_price_data(index)
         open, close, high, low = self._get_now_price_data(index)
         max_change_rate = self._calc_change_rate(prev_close, high)
-        max_earning_rate = self.account.get_earning_rate(
+        max_earning_rate = self.account.get_stock_earning_rate(
             self.stock_name, high
         )  # high일 때 현재 주식 수익률
 
